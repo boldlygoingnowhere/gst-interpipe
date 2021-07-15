@@ -237,9 +237,8 @@ gst_inter_pipe_src_set_property (GObject * object, guint prop_id,
             GST_ERROR_OBJECT (src, "Could not listen to node %s", node_name);
             g_free (node_name);
           } else {
-            if (src->listen_to) {
-              g_free (src->listen_to);
-            }
+            /* Ideally any previous value of src->listen_to would be freed */
+            /*   but doing that here can lead to seg faults */
             src->listen_to = node_name;
           }
           src->listening = TRUE;
