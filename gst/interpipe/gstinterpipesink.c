@@ -164,7 +164,7 @@ gst_inter_pipe_sink_class_init (GstInterPipeSinkClass * klass)
   g_object_class_install_property (gobject_class, PROP_FORWARD_EVENTS,
       g_param_spec_boolean ("forward-events", "Forward events",
           "Forward downstream events to all the listeners (except for EOS)",
-          FALSE, G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS));
+          TRUE, G_PARAM_WRITABLE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_NUM_LISTENERS,
       g_param_spec_uint ("num-listeners", "Number of listeners",
@@ -209,6 +209,11 @@ gst_inter_pipe_sink_init (GstInterPipeSink * sink)
 
   g_mutex_init (&sink->listeners_mutex);
 
+  /* Set the struct buffer to 0's so if in the future more callbacks are added
+   * does not cause a segmentation fault down the line
+   */
+  memset (&callbacks, 0, sizeof (callbacks));
+
   /* AppSink callbacks */
   callbacks.eos = GST_DEBUG_FUNCPTR (gst_inter_pipe_sink_eos);
   callbacks.new_sample = GST_DEBUG_FUNCPTR (gst_inter_pipe_sink_new_buffer);
@@ -220,7 +225,7 @@ gst_inter_pipe_sink_init (GstInterPipeSink * sink)
   gst_base_sink_set_sync (GST_BASE_SINK (sink), FALSE);
   gst_app_sink_set_max_buffers (GST_APP_SINK (sink), 3);
 
-  /* When a change in the interpipesink name happens, the callback function 
+  /* When a change in the interpipesink name happens, the callback function
      will update the node name and the nodes list */
   g_object_notify (G_OBJECT (sink), "name");
 
