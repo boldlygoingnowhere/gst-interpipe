@@ -426,6 +426,8 @@ gst_inter_pipe_src_stop (GstBaseSrc * base)
     GST_INFO_OBJECT (src, "Removing listener from node %s", src->listen_to);
     gst_inter_pipe_leave_node (listener);
     src->listening = FALSE;
+    g_free (src->listen_to);
+    src->listen_to = NULL;
   }
 
   return basesrc_class->stop (base);
@@ -680,6 +682,7 @@ gst_inter_pipe_src_push_buffer (GstInterPipeIListener * iface,
         GST_TIME_ARGS (GST_BUFFER_PTS (buffer)));
   } else if (GST_INTER_PIPE_SRC_RESTART_TIMESTAMP == src->stream_sync) {
     /* Remove the incoming timestamp to be generated according this basetime */
+    buffer = gst_buffer_make_writable (buffer);
     GST_BUFFER_PTS (buffer) = GST_CLOCK_TIME_NONE;
     GST_BUFFER_DTS (buffer) = GST_CLOCK_TIME_NONE;
   }

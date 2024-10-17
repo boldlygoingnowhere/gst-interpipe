@@ -204,7 +204,7 @@ gst_inter_pipe_sink_init (GstInterPipeSink * sink)
   sink->node_name = NULL;
   sink->listeners = g_hash_table_new (g_direct_hash, g_direct_equal);
   sink->forward_eos = FALSE;
-  sink->forward_events = TRUE;
+  sink->forward_events = FALSE;
   sink->last_buffer_timestamp = 0;
 
   g_mutex_init (&sink->listeners_mutex);
@@ -412,7 +412,6 @@ gst_inter_pipe_sink_get_caps (GstBaseSink * base, GstCaps * filter)
   GstInterPipeSink *sink;
   GstInterPipeIListener *listener;
   GHashTable *listeners;
-  GstCaps *resulting_caps = NULL;
   GList *listeners_list = NULL;
   GList *l = NULL;
 
@@ -428,6 +427,8 @@ gst_inter_pipe_sink_get_caps (GstBaseSink * base, GstCaps * filter)
     goto nolisteners;
   }
 
+  GST_INFO_OBJECT (sink, "Caps from upstream: %" GST_PTR_FORMAT, filter);
+
   /* Find the intersection of all the listeners */
   g_hash_table_foreach (listeners, gst_inter_pipe_sink_intersect_listener_caps,
       sink);
@@ -439,22 +440,20 @@ gst_inter_pipe_sink_get_caps (GstBaseSink * base, GstCaps * filter)
     goto nointersection;
   }
 
-  GST_DEBUG_OBJECT (sink, "Filtering listener caps %" GST_PTR_FORMAT
-      " with filter %" GST_PTR_FORMAT, sink->caps_negotiated, filter);
+  GST_INFO_OBJECT (sink, "Caps negotiated between listeners: %" GST_PTR_FORMAT,
+      sink->caps_negotiated);
 
-  /* Take into account upsream caps suggestion */
-  resulting_caps =
-      gst_inter_pipe_sink_caps_intersect (sink->caps_negotiated, filter);
-
-  GST_INFO_OBJECT (sink, "Caps negotiated: %" GST_PTR_FORMAT, resulting_caps);
-
-  if (!resulting_caps || gst_caps_is_empty (resulting_caps)) {
-    GST_ERROR_OBJECT (sink,
-        "Failed to obtain an intersection between upstream elements and listeners");
-    goto nointersection;
+  if (filter) {
+    /* Check if listener caps and upstream caps can intersect */
+    if (!sink->caps_negotiated
+        || !gst_caps_can_intersect (sink->caps_negotiated, filter)) {
+      GST_ERROR_OBJECT (sink,
+          "Failed to obtain an intersection between upstream elements and listeners");
+      goto nointersection;
+    }
   }
 
-  return resulting_caps;
+  return gst_caps_ref (sink->caps_negotiated);
 
 nolisteners:
   {
